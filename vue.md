@@ -558,3 +558,232 @@ app.component("async-common-item",Vue.defineAsyncComponent(()=> {
 **使用transition-group**
 
 ## 状态动画
+
+****
+# Vue基础入门(下)
+## 关于mixin
+**mixin是混入,就是将mixin里的数据或函数混入组件里进行使用**
+```js
+const myMixin = {number:1}
+const app = Vue.createApp({
+    data() {
+        return{
+            number: 1
+        }
+    },
+    mixins:[myMixin],
+    template:`<div>{{number}}</div>`
+})
+// 局部mixin:子组件中的变量不能获取到mixin里的值,只能崽子组件中在调用以下mixins,类似于局部组件,即需要使用mixins:[]接收
+// 
+```
+**需要注意以下几点**
+
+**1. 组件里的data和methods优先级高于mixin里的data和methods,会覆盖mixin**
+
+**2. 生命周期函数,不会覆盖,先执行mixin里的,后执行组件里的**
+
+**3. 自定义的属性,组件中的属性优先级高于mixin属性的优先级**
+
+## 开发实现Vue中的自定义指令
+**app.directives() --- 全局注册**
+
+**const directives = xxx  --局部注册**
+
+
+
+
+## Teleport传送门
+**使用teleport标签将对应标签传送到指定位置:**
+```js
+// 这段代码的意思是将div标签对传送到挂body下,使body成为该元素的父亲
+<teleplate to="body">
+    <div class="mask" v-show="show"></div>
+</teleport>
+```
+
+## 探究render函数(底层)
+**template -> 解析成render ->调用h函数 ->生成虚拟DOM(JS对象) ->真实DOM ->展示到页面上控制展示对应标签**
+
+## 插件的定义与使用
+```js
+// 定义插件
+const myPlugin = {
+    install(app,options) {
+        // 使用app.provide()对插件进行扩展
+        app.provide("name", "Phil")
+        console.log(app,options)
+        // options接受传进来的一些值
+    }
+}
+app.component("my-title", {
+    // 使用插件扩展内容,需要引入inject
+    inject: ["name"],
+    template:`<div>{{name}}</div>`
+})
+// 使用插件 后面的name就是自己传进去的参数,可以在options中打印出来
+app.use(myPlugin , {name: "phil"})
+```
+
+## 实际开发 -- 数据校验插件
+```js
+    const app = Vue.createApp({
+        data() {
+            return{
+                name: "Phil",
+                age: 23,
+            }
+        },
+        rules: {
+            age: {
+                validate: age => age > 25,
+                message: "too young too simple"
+            },
+            name: {
+                validate: name => name.length >= 4,
+                message: "too short"
+            }
+        },
+        template: 
+        `
+        <div>name:{{name}}, age:{{age}}</div>
+        `
+    });
+// 对插件进行封装
+const validatorPlugin = (app,options) => {
+    app.mixin({
+        created() {
+            for(let key in this.$options.rules) {
+                const item = this.$options.rules[key];
+                this.$watch(key,(value)=> {
+                    const result = item.validate(value);
+                    if(!result) console.log(item.message);
+                })
+            }
+        }
+    })
+}
+// 使用插件
+app.use(validatorPlugin);
+const vm = app.mount("#root");
+```
+
+# Vue3.x -Composition API
+ 
+## Setup函数的使用
+**1. setup方法是在实例完全初始化(created)之前执行的,方法里返回的数据可以直接被模板外部引用**
+
+**2. 由于实例还未被初始化,所以在setup中无法使用this,实例初始化后,setup方法会被挂载到实例上并且可以被实例中的其他函数调用**
+```js
+setup(props,context) {
+    // name 和 handleClick函数都可以直接被模板外部直接使用
+    return {
+        name: "phil",
+        handleClick: ()=> {
+            alert("hello")
+        }
+    }
+}
+```
+
+## ref,reactive响应式引用的用法及原理
+**原理:通过proxy对数据进行封装,当数据变化时,触发模板等内容的更新**
+
+**ref处理基础类型的数据 ```let name = ref("phil")```这样的name就成了一个响应式的变量,"phil"变成 proxy({value:"phil")}这样一个响应式引用,但需要修改成```name.value = "phil"```才会生效,另外,要使用ref,需要通过```const {ref} = Vue```来引入**
+
+**reactive处理非基础类型的数据(数据,对象等) ```const nameObj = reactive({name:"phil"});```同样也需要通过```const{reactive} = Vue进行引入``**
+
+**toRefs()将reactive类型的格式,转化成ref的格式,使reactive里的数据也具备响应式的特性 同样需要通过```const {toRefs} = Vue```进行引入**
+
+## toRef && context参数
+**context中接收三个参数:***
+
+**1. attrs: 接收的是Non-props属性,相当于不用Composition API时的this.$attrs**
+
+**2. slots: 可以直接调用slots,配合h函数,slots相当于不用Composition API时的this.$slots**
+
+**3. emit: 调用父组件的方法,相当于不用Composition API时的this.$emit**
+
+## 总结: ref, reactive, toRefs, toRef辨析
+#### ref
+1.作用:接受一个内部值并返回响应式可变的ref对象,ref对象具有指向内部值得单个property.value
+
+**·**
+ref需要通过```const {ref} = Vue```进行引用
+
+**·**
+ref一般定义基础数据类型
+
+**·**
+模板中使用数据时,会自动调用value属性,不需要使用value
+
+sample:
+```js
+var app = Vue.createApp({
+    template:`<div>{{name}}</div>`,
+    setup() {
+        const{ref} = Vue;
+        let name = ref("hello");
+        setTimeout(()=> {
+            name.value = "phil"
+        },2000);
+        return{name}
+    }
+})
+```
+### reactive
+1.作用：接受一个内部值并返回响应式且可变的对象
+
+**·**
+reactive需要通过```const {reactive} = Vue```进行引用
+
+**·**
+ref一般定义非基础数据类型
+
+sample:
+```js
+var app = Vue.createApp({
+    template:`<div>{{arr[0]}}</div>`,
+    setup() {
+        const{reactive} = Vue;
+        let arr = reactive([123]);
+        setTimeout(()=> {
+            arr[0] = 456
+        },2000);
+        return{arr}
+    }
+})
+```
+2.数据解构:
+**·**
+如果解构的数据时引用数据类型,解构后仍是响应式的
+
+**·**
+如果解构数据的值是基本类型,那么解构之后再返回就不具备响应式了,这时候可以通过toRefs进行包装
+
+### toRefs
+原理:{{name:"hello"}}通过reactive包装后会变为proxy({name:"hello"}),再次通过toRefs包装后会变成proxy({name:proxy({value:"hello"})})
+
+sample:
+```js
+var app = Vue.createApp({
+    template:`<div>{{name}}</div>`,
+    setup() {
+        const{toRefs,reactive} = Vue;
+        let obj = reactive({name:"hello"});
+        setTimeout(()=> {
+            obj.name = "phil"
+        },2000);
+        const name = toRefs(obj);
+        return{name}
+    }
+})
+```
+toRefs封装,如果响应式数据本身不存在某个数据,那么不会给一个默认的引用,而是给一个undefined,不具备响应式,如果想给默认引用,推荐使用toRef方法
+
+### toRef
+原理: toRef方法不需要解构,两个参数,一个总数据,一个获取的数据,
+
+
+
+
