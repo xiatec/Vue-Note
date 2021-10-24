@@ -784,6 +784,268 @@ toRefs封装,如果响应式数据本身不存在某个数据,那么不会给一
 ### toRef
 原理: toRef方法不需要解构,两个参数,一个总数据,一个获取的数据,
 
+## 练练手 --- 使用Composition API开发todolist
+**使用setup函数进行响应式开发,将相关数据,方法通过return的形式供外部调用**
+
+```js
+ const app = Vue.createApp({
+        setup() {
+            const {ref,reactive} = Vue;
+            const inputValue = ref("");
+            const list = reactive([]);
+            const handleInputValueChange = (e) => {
+                inputValue.value = e.target.value;
+            }
+            const handleSubmit = () => {
+                list.push(inputValue.value);
+                inputValue.value = "";
+            }
+            return {
+                inputValue,
+                list,
+                handleInputValueChange,
+                handleSubmit
+            }
+        },
+        template: `
+        <div>
+            <div>
+                <input :value="inputValue"  @input="handleInputValueChange" />
+                <button @click="handleSubmit">提交</button>
+            </div>
+            <ul>
+                <li v-for="(item,index) in list" :key="index">{{item}}</li>
+            </ul>
+        </div>`
+    });
+```
+## computed方法生成计算属性
+**computed计算属性**
+
+放回调函数里:
+```js
+let countAddFive = computed(()=return count.value += 5;)
+```
+放对象里:
+```js
+let countAddFive = computed({
+    get: () => {
+        return countObj.count + 5;
+    },
+    set: (param) => {
+        countObj.count = param - 5;
+    }
+})
+```
+## watch 和 watchEffect的使用和差异性
+**watch具备一定的惰性,参数可以拿到原始和当前值,可以侦听多个参数,用一个侦听器承载**
+```js
+watch(name,(currentValue,prevValue) => {
+    console.log(currentValue, prevValue);
+})
+```
+**watchEffect侦听器(偏向Effect)**
+
+**```watchEffect(()=>{})```**
+
+**立即执行,没有惰性,immediate**
+
+**不需要传递你要侦听的内容,自动感知代码依赖,不需要传递很多参数,只要一个回调函数**
+
+**不能获取之前数据的值**
+
+## 生命周期函数新写法
+
+**beforeMount => onBeforeMount**
+
+**mounted => onMounted**
+
+**beforeUpdate => onBeforeUpdate**
+
+**beforeUnmount => onBeforeUnmount**
+
+**unmounted => onUnmounted**
+
+注:composition API没有提供beforeCreate和created,因为setup执行事件点在beforeCreate和created之间
+
+新增生命周期函数:
+1. onRenderTracked:每次渲染后重新收集响应式依赖,在onMounted和onUpdated之前;
+2. onRenderTriggered:每次页面重新渲染之前自动执行,在beforeUpdate之前
+
+## Provide,inject,模板Ref的用法
+TBC
+
+# Vue脚手架,路由与VueX
+## VueCLI的使用和单文件组件
+**使用脚手架工具必须用Node.js**
+
+1、安装node.js，并且自动安装npm
+
+（node -v查看Node.js版本号）
+
+（npm -v查看npm版本号）
+
+2、输入 npm install nrm -g，安装完后可以获取很多国内镜像源。
+
+3、输入nrm ls，显示很多国内镜像源。选择其中一个，如：nrm use taobao
+
+**安装Vue脚手架工具：**
+
+脚手架工具是快速搭建工程的工具，其中webpack打包、工程目录设计都已经搭建好。
+
+1、卸载旧版本：npm uninstall vue-cli -g
+
+2、安装新的：npm install -g @vue/cli
+
+3、在文件目录打开cmd，输入：vue create 文件夹名
+
+4、跳出选择。如不选自定义，选择人工。
+
+5、跳出选择列表。。。。。。
+
+6、安装完后，demo目录下cmd或VScode的terminal里输入npm run serve启动服务器。
+
+7、cmd里按住CTRL+C就能退出。
+
+**单文件组件**
+xx.vue文件包含:1. template标签对 2. script:组件的逻辑 3. 组件的样式
+
+## Vue-Router路由的理解与使用
+```import router from "./router"```
+
+**路由:是指根据url的不同,展示不同的内容**
+
+配置路由项:
+```js
+const routers = [
+    {
+        path: "/",
+        name: "Home",
+        component: Home
+    },
+    {
+        path: "/about",
+        name: "About",
+        // 异步加载路由,需要跳转时才加载这个页面
+        component: () => import("../../About.vue")
+    }
+]
+```
+
+router-link是跳转路由的标签:
+```js
+<router-link to="/">Home</router-link>
+<router-linkto="/about">About</router-link>
+```
+router-view展示当前路由对应的组件内容:
+```js
+<router-view />
+```
+**index.js里面是对路由的配置,App.vue里面是对路由的展示和跳转**
+
+## VueX语法详解
+VueX实际上是一个数据管理框架,创建了一个全局唯一的仓库来存放数据,可以通过this.$store.state.name进行使用
+
+**用createStore创建一个store,数据放到state里,然后从组件里的computed中获取数据**
+```js
+export default createStore({
+    state: {
+        name: "pihl"
+    },
+    mutations: {},
+    actions: {},
+    modules: {}
+})
+```
+**修改store的数据步骤:**
+
+1. 调用this.$store.dispatch(change), 派发一个action,名字叫做change --- dispatch和actions做关联
+   
+2. 感知到change这个action,执行store中actions下面的change方法
+
+3. commit 提交一个叫做change的数据改变 --- commit和mutation做关联
+
+4. mutation感知到提交对的change改变,执行change方法改变数据
+
+5. 在mutation里修改数据
+
+```js
+export default createStore({
+    state: {
+        name: "pihl"
+    },
+    mutations: {
+        // 4. mutation感知到提交对的change改变,执行change方法改变数据
+        change() {
+            // 5. 在mutation里修改数据
+            this.state.name = "xia"
+        }
+    },
+    actions: {
+        // 2. 感知到change这个action,执行store中actions下面的change方法
+        change() {
+            // 3. commit 提交一个叫做change的数据改变
+            this.commit("change");
+        }
+    },
+    modules: {}
+})
+```
+注:如果不涉及异步修改数据的话,可以考虑直接对数据进行commit操作:
+```js
+// 相应组件中:
+this.$store.commit("change");
+// 接着直接在mutation中执行change方法修改数据
+//mutation中一般只写同步代码,一般不写异步代码,而actions一般放异步代码
+mutations: {
+        change() {
+            // 5. 在mutation里修改数据
+            this.state.name = "xia"
+        }
+    },
+```
+
+## Composition API使用VueX
+**Composition API里面的核心要引入useStore,才能获取到全局对象**
+```js
+import {toRefs } from "vue"
+import {useStore} from "vuex"
+export default {
+    name: "Home",
+    setup() {
+        const store = useStore();//获取全局对象
+        const name = toRefs(store.state);
+        const handleClick = () => {
+            store.dispatch("getData");
+        }
+        return {
+            name,
+            handleClick
+        }
+    }
+}
+```
+## 使用axios发送ajax请求
+引入axios:```import axios from "axios"```
+```js
+axios.get("url").then((response)=>{
+    const msg = response.data.message;
+
+})
+```
+## one more thing --- 关于大小写
+**1. 如果组件名称是小写字母,且带有连字符,在使用组件的时候,也需要同样的写法**
+
+**2. 如果是首字母大写的驼峰式命名,在使用组件时,连字符或驼峰式都是可以的**
+
+**3. 在自定义事件名称时, 事件监听器在DOM模板中会被自动转换成全小写(因为HTML是大小写不敏感的). 例如:自定义事件名称为:@myEvent, 会自动变成@myevent, 或写成带有连字符的形式; 当触发事件时myEvent时, 则会监听不到**
+
+
+## ---完结撒花~常回来看看---
+
+
+
+
 
 
 
